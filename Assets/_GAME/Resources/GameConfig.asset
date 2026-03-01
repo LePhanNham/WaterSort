@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6c53a0407988854796e046344e9580c, type: 3}
+  m_Name: GameConfig
+  m_EditorClassIdentifier: 
+  tubeCapacity: 4
+  totalTubes: 8
+  emptyTubes: 2
+  colorMappings:
+  - colorType: 0
+    colorValue: {r: 1, g: 1, b: 1, a: 1}
+  - colorType: 1
+    colorValue: {r: 1, g: 0, b: 0, a: 1}
+  - colorType: 2
+    colorValue: {r: 0, g: 0.27430224, b: 1, a: 1}
+  - colorType: 3
+    colorValue: {r: 0.080822945, g: 1, b: 0, a: 1}
+  - colorType: 4
+    colorValue: {r: 0.9719956, g: 1, b: 0, a: 1}
+  - colorType: 5
+    colorValue: {r: 0.9170644, g: 0.051886797, b: 1, a: 1}
+  - colorType: 6
+    colorValue: {r: 1, g: 0.59757906, b: 0.042452812, a: 1}
+  - colorType: 7
+    colorValue: {r: 1, g: 0.042452812, b: 0.6371145, a: 1}
+  - colorType: 8
+    colorValue: {r: 0, g: 1, b: 0.57676554, a: 1}
