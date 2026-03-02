@@ -282,14 +282,15 @@ MonoBehaviour:
   - {fileID: 4861100671144883617}
   - {fileID: 2436352602333972264}
   - {fileID: 1581640623504743358}
-  separatorLines:
-  - {fileID: 2606438423159784874}
+  separatorLines: []
   clickableArea: {fileID: 5605600464177759263}
   tubeCap: {fileID: 9219240160483996071}
   capAnimDuration: 0.4
   selectMoveDistance: 20
+  pourSoundOffset: -0.05
   tubeMouthPoint: {fileID: 4014157086480333301}
   tubeHeight: 360
+  waterStreamEffect: {fileID: 8522387220494450743}
 --- !u!1 &6239801015853260034
 GameObject:
   m_ObjectHideFlags: 0
@@ -527,6 +528,7 @@ GameObject:
   - component: {fileID: 7085325045865843371}
   - component: {fileID: 2606438423159784874}
   - component: {fileID: 8522387220494450743}
+  - component: {fileID: 5873514625290427401}
   m_Layer: 5
   m_Name: Image - Stream
   m_TagString: Untagged
@@ -603,6 +605,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9560d785747067c4ca3c8fa06f6b1969, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!95 &5873514625290427401
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7081396555732791064}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 3ccb00087164a994eaa98d502f28ffa2, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &9219240160483996071
 GameObject:
   m_ObjectHideFlags: 0

@@ -8,6 +8,7 @@ public class UIManager : MonoBehaviour
     [Header("Home Screen")]
     public GameObject homeUI;
     public Button playButton;
+    public TextMeshProUGUI playButtonLevelText; // Text hiển thị số level trên nút Play
     
     [Header("Gameplay UI")]
     public GameObject gameplayUI;
@@ -20,6 +21,11 @@ public class UIManager : MonoBehaviour
     public Button nextLevelButton;
     public Button playAgainButton;
     
+    [Header("Lose Popup")]
+    public GameObject losePopup;
+    public Button retryButton;
+    public Button loseHomeButton;
+    
     [Header("Setting Panel")]
     public Button settingButton;
     public GameObject settingPanel;
@@ -31,6 +37,11 @@ public class UIManager : MonoBehaviour
     public Button soundButton;
     public Image soundButtonIcon;
     
+    public Button soundBGButton;
+    public Image soundBGButtonIcon;
+    
+    public Button homeButton;
+    
     private bool isFirstGameLoad = true;
     private bool isSettingOpen = false;
 
@@ -39,6 +50,7 @@ public class UIManager : MonoBehaviour
         if (GameManager.Instance != null)
         {
             GameManager.Instance.OnGameWin += ShowWinPopup;
+            GameManager.Instance.OnGameLose += ShowLosePopup;
         }
         
         InitializeUIStates();
@@ -58,6 +70,12 @@ public class UIManager : MonoBehaviour
         if (playAgainButton != null)
             playAgainButton.onClick.AddListener(OnRestartLevel);
         
+        if (retryButton != null)
+            retryButton.onClick.AddListener(OnRestartLevel);
+        
+        if (loseHomeButton != null)
+            loseHomeButton.onClick.AddListener(OnLoseHomeClicked);
+        
         if (settingButton != null)
             settingButton.onClick.AddListener(ToggleSettingPanel);
         
@@ -67,8 +85,15 @@ public class UIManager : MonoBehaviour
         if (soundButton != null)
             soundButton.onClick.AddListener(ToggleSound);
         
+        if (soundBGButton != null)
+            soundBGButton.onClick.AddListener(ToggleSoundBG);
+        
+        if (homeButton != null)
+            homeButton.onClick.AddListener(OnHomeButtonClicked);
+        
         UpdateLevelText();
         UpdateSoundButtonVisual();
+        UpdateSoundBGButtonVisual();
         
         CheckAndShowHomeUI();
     }
@@ -79,6 +104,9 @@ public class UIManager : MonoBehaviour
         if (winPopup != null)
             winPopup.SetActive(false);
         
+        if (losePopup != null)
+            losePopup.SetActive(false);
+        
         if (settingPanel != null)
             settingPanel.SetActive(false);
     }
@@ -87,14 +115,14 @@ public class UIManager : MonoBehaviour
     {
         if (GameManager.Instance?.gameplayController == null) return;
         
-        int currentLevel = GameManager.Instance.gameplayController.currentLevel;
-        
-        if (isFirstGameLoad && currentLevel >= 2)
+        // Luôn hiện home trước khi vào game
+        if (isFirstGameLoad)
         {
             if (homeUI != null)
             {
                 homeUI.SetActive(true);
                 AnimateHomeUIAppear();
+                UpdatePlayButtonText(); // Cập nhật level text
             }
             
             if (gameplayUI != null)
@@ -107,6 +135,18 @@ public class UIManager : MonoBehaviour
             
             if (gameplayUI != null)
                 gameplayUI.SetActive(true);
+        }
+    }
+    
+    /// <summary>
+    /// Cập nhật text level trên nút Play
+    /// </summary>
+    private void UpdatePlayButtonText()
+    {
+        if (playButtonLevelText != null && LevelDataManager.Instance != null)
+        {
+            int level = LevelDataManager.Instance.currentLevel;
+            playButtonLevelText.text = $"Level {level}";
         }
     }
     
@@ -198,6 +238,21 @@ public class UIManager : MonoBehaviour
                     }
                 });
         }
+        else if (losePopup != null && losePopup.activeSelf)
+        {
+            losePopup.transform.DOScale(0f, 0.3f)
+                .SetEase(Ease.InBack)
+                .OnComplete(() => 
+                {
+                    losePopup.SetActive(false);
+                    losePopup.transform.localScale = Vector3.one;
+                    
+                    if (GameManager.Instance?.gameplayController != null)
+                    {
+                        GameManager.Instance.gameplayController.RestartLevel();
+                    }
+                });
+        }
         else
         {
             if (GameManager.Instance?.gameplayController != null)
@@ -205,6 +260,36 @@ public class UIManager : MonoBehaviour
                 GameManager.Instance.gameplayController.RestartLevel();
             }
         }
+    }
+    
+    private void OnLoseHomeClicked()
+    {
+        if (losePopup == null) return;
+        
+        losePopup.transform.DOScale(0f, 0.3f)
+            .SetEase(Ease.InBack)
+            .OnComplete(() => 
+            {
+                losePopup.SetActive(false);
+                losePopup.transform.localScale = Vector3.one;
+                
+                if (gameplayUI != null)
+                    gameplayUI.SetActive(false);
+                
+                if (GameManager.Instance?.gameplayController != null)
+                {
+                    GameManager.Instance.gameplayController.ResetToHome();
+                }
+                
+                if (homeUI != null)
+                {
+                    homeUI.SetActive(true);
+                    AnimateHomeUIAppear();
+                    UpdatePlayButtonText();
+                }
+                
+                isFirstGameLoad = true;
+            });
     }
 
     private void ShowWinPopup()
@@ -225,6 +310,23 @@ public class UIManager : MonoBehaviour
             winPopup.transform.DORotate(new Vector3(0, 0, 5f), 0.1f)
                 .SetEase(Ease.InOutSine)
                 .SetLoops(2, LoopType.Yoyo)
+        );
+        
+        popupSeq.Play();
+    }
+    
+    private void ShowLosePopup()
+    {
+        if (losePopup == null) return;
+        
+        losePopup.SetActive(true);
+        losePopup.transform.localScale = Vector3.zero;
+        
+        Sequence popupSeq = DOTween.Sequence();
+        
+        popupSeq.Append(
+            losePopup.transform.DOScale(1f, 0.5f)
+                .SetEase(Ease.OutBack)
         );
         
         popupSeq.Play();
@@ -332,6 +434,41 @@ public class UIManager : MonoBehaviour
         UpdateSoundButtonVisual();
     }
     
+    private void ToggleSoundBG()
+    {
+        if (SoundManager.Instance == null) return;
+        
+        bool currentState = SoundManager.Instance.IsBGMEnabled();
+        SoundManager.Instance.SetBGMEnabled(!currentState);
+        
+        UpdateSoundBGButtonVisual();
+    }
+    
+    private void OnHomeButtonClicked()
+    {
+        CloseSettingPanel();
+        
+        if (winPopup != null && winPopup.activeSelf)
+            winPopup.SetActive(false);
+        
+        if (gameplayUI != null)
+            gameplayUI.SetActive(false);
+        
+        if (GameManager.Instance?.gameplayController != null)
+        {
+            GameManager.Instance.gameplayController.ResetToHome();
+        }
+        
+        if (homeUI != null)
+        {
+            homeUI.SetActive(true);
+            AnimateHomeUIAppear();
+            UpdatePlayButtonText();
+        }
+        
+        isFirstGameLoad = true;
+    }
+    
     private void UpdateSoundButtonVisual()
     {
         if (soundButtonIcon == null || SoundManager.Instance == null) return;
@@ -341,9 +478,17 @@ public class UIManager : MonoBehaviour
         Color iconColor = soundButtonIcon.color;
         iconColor.a = soundEnabled ? 1f : 0.3f;
         soundButtonIcon.color = iconColor;
+    }
+    
+    private void UpdateSoundBGButtonVisual()
+    {
+        if (soundBGButtonIcon == null || SoundManager.Instance == null) return;
         
-        // Option 2: Change color (gray when off, white when on)
-        // soundButtonIcon.color = soundEnabled ? Color.white : Color.gray;
+        bool bgmEnabled = SoundManager.Instance.IsBGMEnabled();
+        
+        Color iconColor = soundBGButtonIcon.color;
+        iconColor.a = bgmEnabled ? 1f : 0.3f;
+        soundBGButtonIcon.color = iconColor;
     }
 
     private void OnDestroy()
@@ -351,6 +496,7 @@ public class UIManager : MonoBehaviour
         if (GameManager.Instance != null)
         {
             GameManager.Instance.OnGameWin -= ShowWinPopup;
+            GameManager.Instance.OnGameLose -= ShowLosePopup;
         }
     }
 }

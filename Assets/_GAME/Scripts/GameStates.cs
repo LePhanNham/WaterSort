@@ -11,7 +11,6 @@ public class InitState : IGameState
 
     public void Enter()
     {
-        game.gameplayController.InitializeLevel();
         game.ChangeState(new PlayState(game));
     }
     public void Exit() { }

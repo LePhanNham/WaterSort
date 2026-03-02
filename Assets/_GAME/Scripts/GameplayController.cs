@@ -18,18 +18,33 @@ public class GameplayController : MonoBehaviour
     private UndoSystem undoSystem = new UndoSystem();
     private TubeView selectedTubeView = null;
     private bool isInputEnabled = false;
+    
+    private void Start()
+    {
+        if (LevelDataManager.Instance != null)
+        {
+            currentLevel = LevelDataManager.Instance.currentLevel;
+        }
+    }
 
     public void InitializeLevel()
     {
-        // Clear old
-        foreach(var view in tubeViews) Destroy(view.gameObject);
+        if (tubesContainer != null)
+        {
+            tubesContainer.gameObject.SetActive(true);
+        }
+        
+        foreach(var view in tubeViews) 
+        {
+            if (view != null)
+                Destroy(view.gameObject);
+        }
         tubeDatas.Clear();
         tubeViews.Clear();
         undoSystem.Clear();
 
         if (GameManager.Instance == null || GameManager.Instance.config == null)
         {
-            Debug.LogError("GameManager hoặc GameConfig không tồn tại!");
             return;
         }
 
@@ -70,33 +85,57 @@ public class GameplayController : MonoBehaviour
 
         GenerateRandomLevel(config);
         
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(tubesContainer.GetComponent<RectTransform>());
+        
+        yield return new WaitForEndOfFrame();
+        
+        Dictionary<TubeView, Vector3> tubeGridPositions = new Dictionary<TubeView, Vector3>();
+        for (int i = 0; i < tubeViews.Count; i++)
+        {
+            var tubeView = tubeViews[i];
+            Vector3 pos = tubeView.transform.localPosition;
+            tubeGridPositions[tubeView] = pos;
+        }
+        
         GridLayoutGroup gridLayout = tubesContainer.GetComponent<GridLayoutGroup>();
         if (gridLayout != null)
+        {
             gridLayout.enabled = false;
+        }
         
-        if (isFirstGameLoad && currentLevel >= 2)
+        foreach (var tubeView in tubeViews)
         {
-            tubesContainer.gameObject.SetActive(false);
+            LayoutElement layoutElement = tubeView.GetComponent<LayoutElement>();
+            if (layoutElement != null)
+            {
+                layoutElement.ignoreLayout = true;
+            }
         }
-        else
-        {
-            yield return StartCoroutine(AnimateTubesAppear());
-        }
+        
+        tubesContainer.gameObject.SetActive(true);
+        yield return StartCoroutine(AnimateTubesAppear(tubeGridPositions));
     }
     
     public void OnHomeUIDismissed()
     {
-        tubesContainer.gameObject.SetActive(true);
-        StartCoroutine(AnimateTubesAppear());
+        if (tubeViews.Count == 0)
+        {
+            InitializeLevel();
+        }
+        else
+        {
+            isInputEnabled = true;
+        }
     }
     
-    private System.Collections.IEnumerator AnimateTubesAppear()
+    private System.Collections.IEnumerator AnimateTubesAppear(Dictionary<TubeView, Vector3> gridPositions)
     {
         foreach (var tubeView in tubeViews)
         {
             tubeView.transform.localScale = Vector3.zero;
-            Vector3 originalPos = tubeView.transform.localPosition;
-            tubeView.transform.localPosition = originalPos + Vector3.up * 100f;
+            Vector3 gridPos = gridPositions[tubeView];
+            tubeView.transform.localPosition = gridPos + Vector3.up * 100f;
         }
         
         float delayBetweenTubes = 0.05f;
@@ -104,7 +143,7 @@ public class GameplayController : MonoBehaviour
         for (int i = 0; i < tubeViews.Count; i++)
         {
             TubeView tubeView = tubeViews[i];
-            Vector3 targetPos = tubeView.transform.localPosition - Vector3.up * 100f;
+            Vector3 targetPos = gridPositions[tubeView];
             
             Sequence tubeSeq = DOTween.Sequence();
             
@@ -333,6 +372,7 @@ public class GameplayController : MonoBehaviour
             sourceData.CheckAndTriggerCompletedEvent();
             
             CheckWinCondition();
+            CheckLoseCondition();
             isInputEnabled = true;
         });
     }
@@ -342,12 +382,43 @@ public class GameplayController : MonoBehaviour
     public void NextLevel()
     {
         currentLevel++;
+        
+        if (LevelDataManager.Instance != null)
+        {
+            LevelDataManager.Instance.SetCurrentLevel(currentLevel);
+        }
+        
         InitializeLevel();
     }
 
     public void RestartLevel()
     {
         InitializeLevel();
+    }
+    
+    public void ResetToHome()
+    {
+        foreach(var view in tubeViews)
+        {
+            if (view != null)
+            {
+                Destroy(view.gameObject);
+            }
+        }
+        
+        tubeDatas.Clear();
+        tubeViews.Clear();
+        undoSystem.Clear();
+        
+        isInputEnabled = false;
+        selectedTubeView = null;
+        
+        if (tubesContainer != null)
+        {
+            tubesContainer.gameObject.SetActive(false);
+        }
+        
+        isFirstGameLoad = true;
     }
 
     private void CheckWinCondition()
@@ -358,6 +429,61 @@ public class GameplayController : MonoBehaviour
         }
         
         StartCoroutine(WinCelebrationSequence());
+    }
+    
+    private void CheckLoseCondition()
+    {
+        if (HasAnyValidMove())
+        {
+            return;
+        }
+        
+        bool allCompleted = true;
+        foreach (var data in tubeDatas)
+        {
+            if (!data.IsCompleted())
+            {
+                allCompleted = false;
+                break;
+            }
+        }
+        
+        if (!allCompleted)
+        {
+            StartCoroutine(LoseSequence());
+        }
+    }
+    
+    private bool HasAnyValidMove()
+    {
+        for (int i = 0; i < tubeDatas.Count; i++)
+        {
+            if (tubeDatas[i].IsEmpty() || tubeDatas[i].IsCompleted())
+                continue;
+                
+            for (int j = 0; j < tubeDatas.Count; j++)
+            {
+                if (i == j) continue;
+                
+                if (RuleValidator.CanPour(tubeDatas[i], tubeDatas[j]))
+                {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    private System.Collections.IEnumerator LoseSequence()
+    {
+        isInputEnabled = false;
+        yield return new WaitForSeconds(0.5f);
+        
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.TriggerLose();
+        }
     }
     
     private System.Collections.IEnumerator WinCelebrationSequence()
@@ -392,6 +518,12 @@ public class GameplayController : MonoBehaviour
         {
             tubeView.transform.localScale = Vector3.one;
             tubeView.transform.rotation = Quaternion.identity;
+        }
+        
+        // Hoàn thành level và lưu progress
+        if (LevelDataManager.Instance != null)
+        {
+            LevelDataManager.Instance.CompleteLevel();
         }
         
         if (GameManager.Instance != null)

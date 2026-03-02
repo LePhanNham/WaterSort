@@ -33,6 +33,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     [Header("Water Stream Settings")]
     public Transform tubeMouthPoint; // Optional: điểm miệng ống để spawn water stream
     public float tubeHeight = 200f; // Chiều cao ống (nếu không có tubeMouthPoint)
+    public WaterStreamEffect waterStreamEffect; // Water stream có sẵn để reuse
     
     private Vector3 originalLocalPos;
     private Vector3 originalPos;
@@ -54,6 +55,13 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         
         if (parentCanvas == null)
             Debug.LogError($"Tube {data.Id}: Cannot find parent Canvas!");
+        
+        // Đặt WaterStream vào Canvas chính để không bị ảnh hưởng bởi Tube transform
+        if (waterStreamEffect != null && parentCanvas != null)
+        {
+            waterStreamEffect.transform.SetParent(parentCanvas.transform, false);
+            waterStreamEffect.gameObject.SetActive(false);
+        }
         
         originalSiblingIndex = transform.GetSiblingIndex();
         
@@ -178,33 +186,38 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     
     private void CreateWaterStream(Vector3 startPos, Vector3 endPos, Color waterColor, float delay, float duration)
     {
-        if (parentCanvas == null)
+        if (waterStreamEffect == null)
+        {
+            Debug.LogWarning("WaterStreamEffect chưa được gán trong Inspector!");
             return;
+        }
         
-        GameObject streamObj = new GameObject("WaterStream");
-        streamObj.transform.SetParent(parentCanvas.transform, true);
         
-        // Add RectTransform
-        RectTransform rt = streamObj.AddComponent<RectTransform>();
+        waterStreamEffect.gameObject.SetActive(true);
+        waterStreamEffect.Initialize(waterColor);
         
-        // Add WaterStreamEffect component
-        WaterStreamEffect waterStream = streamObj.AddComponent<WaterStreamEffect>();
-        waterStream.Initialize(waterColor);
-        
-        // Delay trước khi bắt đầu stream
         if (delay > 0)
         {
             DOVirtual.DelayedCall(delay, () =>
             {
-                if (waterStream != null)
-                    waterStream.AnimateStream(startPos, endPos, duration);
+                if (waterStreamEffect != null)
+                    waterStreamEffect.AnimateStream(startPos, endPos, duration);
             });
         }
         else
         {
-            // Không delay, chạy ngay
-            waterStream.AnimateStream(startPos, endPos, duration);
+            waterStreamEffect.AnimateStream(startPos, endPos, duration);
         }
+    }
+    
+    private void CreateWaterStreamAnimated(Vector3 sourceMouth, Vector3 startWaterLevel, Vector3 endWaterLevel, Color waterColor, float duration, TubeView targetView)
+    {
+        if (waterStreamEffect == null) return;
+        
+        waterStreamEffect.gameObject.SetActive(true);
+        waterStreamEffect.Initialize(waterColor);
+        
+        waterStreamEffect.AnimateStreamGrowing(sourceMouth, startWaterLevel, endWaterLevel, duration);
     }
     
     private Vector3 GetTubeMouthPosition(bool isTilted)
@@ -215,16 +228,12 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
             return tubeMouthPoint.position;
         }
         
-        // Offset đơn giản dựa trên vị trí hiện tại
         if (isTilted)
         {
-            // Khi nghiêng -45°, miệng ống dịch sang trái và lên trên
-            // Tính toán: khi xoay -45°, điểm top của ống sẽ ở vị trí mới
             float cos45 = 0.707f; // cos(45°)
             float sin45 = 0.707f; // sin(45°)
             float halfHeight = tubeHeight * 0.5f;
             
-            // Offset khi nghiêng: x giảm, y vẫn là chiều cao nhân cos(45)
             float offsetX = -halfHeight * sin45;  // Dịch sang trái
             float offsetY = halfHeight * cos45;   // Chiều cao giảm do nghiêng
             
@@ -244,13 +253,10 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         
         int liquidCount = Data.GetLiquidCount();
         
-        // Mỗi segment chiếm 1/4 chiều cao ống (capacity = 4)
         float segmentHeight = tubeHeight / config.tubeCapacity;
         
-        // Vị trí mức nước = đáy ống + (số segments * chiều cao 1 segment)
         float waterLevelOffset = liquidCount * segmentHeight;
         
-        // Đáy ống ở vị trí: center - (height/2)
         float bottomY = transform.position.y - (tubeHeight * 0.5f);
         
         return new Vector3(transform.position.x, bottomY + waterLevelOffset, transform.position.z);
@@ -263,7 +269,6 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         {
             if (separatorLines[i] == null) continue;
             
-            // Hiện separator nếu 2 segments liền kề cùng màu
             bool shouldShow = i < colors.Count - 1 && colors[i] == colors[i + 1] && colors[i] != ColorType.None;
             separatorLines[i].enabled = shouldShow;
         }
@@ -303,10 +308,8 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         if (layoutElement != null)
             layoutElement.ignoreLayout = isSelected;
         
-        // Dùng localPosition để không bị ảnh hưởng bởi parent transform
         float targetY = originalLocalPos.y + (isSelected ? selectMoveDistance : 0f);
         
-        // Kill animation cũ trước khi chạy mới
         transform.DOKill();
         
         transform.DOLocalMoveY(targetY, 0.3f)
@@ -344,7 +347,6 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         
         Sequence seq = DOTween.Sequence();
         
-        // 1. Bay lên và tiến gần target (điều chỉnh cho UI coordinates)
         Vector3 targetOffset = new Vector3(-150f, 120f, 0);
         seq.Append(transform.DOMove(targetView.transform.position + targetOffset, 0.3f).SetEase(Ease.OutQuad));
         
@@ -362,6 +364,25 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
             if (SoundManager.Instance != null)
                 SoundManager.Instance.PlayPour();
         });
+        
+        float totalPourDuration = amount * pourDuration;
+        seq.InsertCallback(startPourTime, () => 
+        {
+            Vector3 sourceMouthPos = GetTubeMouthPosition(true);
+            
+            float segmentHeight = tubeHeight / config.tubeCapacity;
+            float bottomY = targetView.transform.position.y - (tubeHeight * 0.5f);
+            
+            float startWaterLevelY = bottomY + (targetStartIndex * segmentHeight);
+            Vector3 startWaterPos = new Vector3(targetView.transform.position.x, startWaterLevelY, targetView.transform.position.z);
+            
+            int finalTargetIdx = targetStartIndex + amount;
+            float endWaterLevelY = bottomY + (finalTargetIdx * segmentHeight);
+            Vector3 endWaterPos = new Vector3(targetView.transform.position.x, endWaterLevelY, targetView.transform.position.z);
+            
+            Color streamColor = config.GetColorValue(colorToMove);
+            CreateWaterStreamAnimated(sourceMouthPos, startWaterPos, endWaterPos, streamColor, totalPourDuration, targetView);
+        });
 
         for (int i = 0; i < amount; i++)
         {
@@ -369,21 +390,6 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
             int targetIdx = targetStartIndex + i;
             
             float delayTime = startPourTime + (i * pourDuration);
-            
-            int capturedTargetIdx = targetIdx;
-            
-            seq.InsertCallback(delayTime, () => 
-            {
-                Vector3 sourceMouthPos = GetTubeMouthPosition(true);
-                
-                float segmentHeight = tubeHeight / config.tubeCapacity;
-                float bottomY = targetView.transform.position.y - (tubeHeight * 0.5f);
-                float waterLevelY = bottomY + (capturedTargetIdx * segmentHeight);
-                Vector3 targetWaterLevelPos = new Vector3(targetView.transform.position.x, waterLevelY, targetView.transform.position.z);
-                
-                Color streamColor = config.GetColorValue(colorToMove);
-                CreateWaterStream(sourceMouthPos, targetWaterLevelPos, streamColor, 0f, pourDuration);
-            });
             
             if (sourceIdx >= 0 && sourceIdx < liquidImages.Length)
             {
@@ -419,7 +425,6 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
             if (layoutElement != null)
                 layoutElement.ignoreLayout = false;
             
-            // Stop pour sound khi animation rót xong
             if (SoundManager.Instance != null)
                 SoundManager.Instance.StopPour();
             
@@ -445,13 +450,10 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         {
             if (liquidImages[i].fillAmount > 0)
             {
-                // Lấy màu từ visual (có thể không chính xác 100% nhưng đủ dùng)
-                // Hoặc có thể track trong list riêng
                 colors.Add(ColorType.None); // Placeholder
             }
         }
         
-        // Tạm thời disable tất cả separators (cần data structure tốt hơn để track colors)
         foreach (var sep in separatorLines)
         {
             if (sep != null)
@@ -459,7 +461,6 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         }
     }
 
-    // Dùng cho Undo hoặc Init nhanh
     public void ForceAddSegment(ColorType color)
     {
         int index = Data.GetLiquidCount() - 1; // Data đã được add rồi
@@ -526,6 +527,13 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     private void OnDestroy()
     {
         StopIdleAnimation();
+        
+        // Ẩn và cleanup water stream khi destroy tube
+        if (waterStreamEffect != null)
+        {
+            waterStreamEffect.gameObject.SetActive(false);
+            waterStreamEffect.DOKill();
+        }
         
         if (Data != null) 
             Data.OnTubeCompleted -= OnTubeCompleted;
