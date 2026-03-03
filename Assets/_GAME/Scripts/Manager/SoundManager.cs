@@ -20,6 +20,8 @@ public class SoundManager : SingletonMono<SoundManager>
     [Tooltip("Pour sound timing có thể điều chỉnh trong TubeView.pourSoundOffset")]
     public AudioClip pourSound;          // Khi rót nước (optional)
     public AudioClip errorSound;         // Khi click sai (optional)
+    public AudioClip winSound;           // Khi chiến thắng
+    public AudioClip loseSound;          // Khi thua
     
     [Header("Settings")]
     [Range(0f, 1f)]
@@ -103,6 +105,16 @@ public class SoundManager : SingletonMono<SoundManager>
     public void PlayError()
     {
         PlaySFX(errorSound);
+    }
+
+    public void PlayWin()
+    {
+        PlaySFX(winSound);
+    }
+
+    public void PlayLose()
+    {
+        PlaySFX(loseSound);
     }
     
     private void PlaySFX(AudioClip clip)

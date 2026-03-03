@@ -7,6 +7,8 @@ public class GameplayController : MonoBehaviour
 {
     public Transform tubesContainer;
     public TubeView tubePrefab; 
+    public WinPopupController winPopup;
+    public LosePopupController losePopup;
 
     [Header("Level Management")]
     public int currentLevel = 1;
@@ -483,6 +485,12 @@ public class GameplayController : MonoBehaviour
         if (GameManager.Instance != null)
         {
             GameManager.Instance.TriggerLose();
+        
+            // show lose popup if assigned
+            if (losePopup != null)
+            {
+                losePopup.ShowLose();
+            }
         }
     }
     
@@ -529,6 +537,12 @@ public class GameplayController : MonoBehaviour
         if (GameManager.Instance != null)
         {
             GameManager.Instance.TriggerWin();
+        }
+        
+        // show win popup UI animation if assigned
+        if (winPopup != null)
+        {
+            winPopup.ShowWin();
         }
     }
 }
