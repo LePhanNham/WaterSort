@@ -138,9 +138,6 @@ public class UIManager : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Cập nhật text level trên nút Play
-    /// </summary>
     private void UpdatePlayButtonText()
     {
         if (playButtonLevelText != null && LevelDataManager.Instance != null)

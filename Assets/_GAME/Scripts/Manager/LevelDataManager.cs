@@ -42,7 +42,6 @@ public class LevelDataManager : SingletonMono<LevelDataManager>
         SaveLevelData();
     }
     
-    // ==================== DEBUG/TESTING ====================
     
 #if UNITY_EDITOR
     [ContextMenu("Debug: Print Level Data")]
@@ -57,14 +56,12 @@ public class LevelDataManager : SingletonMono<LevelDataManager>
     private void DebugResetProgress()
     {
         ResetAllProgress();
-        Debug.Log("Progress has been reset to Level 1!");
     }
     
     [ContextMenu("Debug: Set Level 10")]
     private void DebugSetLevel10()
     {
         SetCurrentLevel(10);
-        Debug.Log("Set to Level 10!");
     }
 #endif
 }

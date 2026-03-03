@@ -1,8 +1,6 @@
 using UnityEngine;
 
-/// <summary>
-/// Quản lý âm thanh game (SFX)
-/// </summary>
+
 public class SoundManager : SingletonMono<SoundManager>
 {
     [Header("Audio Sources")]

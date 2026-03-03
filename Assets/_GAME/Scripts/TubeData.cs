@@ -8,7 +8,6 @@ public class TubeData
     public int Capacity { get; private set; }
     private Stack<ColorType> liquids;
 
-    // Observer Pattern: Events cho View lắng nghe
     public event Action<ColorType, int> OnLiquidAdded; // color, currentCount
     public event Action<int> OnLiquidRemoved;          // remainingCount
     public event Action OnTubeCompleted;

@@ -23,7 +23,6 @@ public class WinPopupController : MonoBehaviour
     public float winPopDuration = 0.3f;
     public float bgFadeDuration = 0.35f;
     public float buttonsDelay = 0.15f;
-    [Tooltip("Target alpha for background shadow (0-1). For alpha=250 use 250f/255f.")]
     public float shadowAlpha = 250f/255f;
 
     private void Awake()

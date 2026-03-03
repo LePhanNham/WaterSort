@@ -35,7 +35,6 @@ public class GameConfig : ScriptableObject
             }
         }
         
-        Debug.LogWarning($"Không tìm thấy màu cho {type}, dùng màu mặc định");
         return Color.white;
     }
 }
