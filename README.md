@@ -6,6 +6,14 @@ A polished Unity-based implementation of the classic Water Sort Puzzle game with
 
 Water Sort Puzzle is a relaxing and challenging logic game where players must sort colored water into tubes until each tube contains only one color. The game features intuitive controls, beautiful animations, and progressively challenging levels.
 
+## 🎥 Live Demo
+
+**Android Version:**  
+👉 https://lephannham.itch.io/watersort  
+
+**Gameplay Preview:**  
+👉 https://drive.google.com/file/d/1S-RIDrH6YsYNyiMuBVPFP_kd2BPHDEWC/view?usp=sharing
+
 ## ✨ Features
 
 ### Core Gameplay
